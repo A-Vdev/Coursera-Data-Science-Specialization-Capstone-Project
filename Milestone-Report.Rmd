@@ -1,0 +1,266 @@
+---
+title: "Coursera Capstone Project Milestone Report"
+author: "Abhijeet"
+date: "2023-11-30"
+output: 
+    html_document:
+        toc: true
+        toc_float: true
+        theme: "readable"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE)
+```
+
+## Synopsis
+This Milestone Report is a part of capstone project of the Data Science Capstone Course of [Data Science Specialization](https://www.coursera.org/specializations/jhu-data-science) by Johns Hopkins University on Coursera. 
+This Milestone Report focuses on the application of data science in the field of natural language processing. The primary objective of this project is to get acquainted with Natural Language Processing, Text Mining, and the relevant tools available in R.
+Large databases comprising of text in a target language are commonly used when generating language models for various purposes. In this Report, the English database is used in this analysis.
+
+Following tasks are performed:
+
+1. Obtaining the data 
+2. Familiarizing with the NLP and text mining.
+
+## Loading the Data
+Download, unzip and load the training data.
+```{r}
+url<-"https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+
+
+if (!file.exists('Coursera-capestone-dataset.zip')){
+  download.file(url,destfile = "Coursera-capestone-dataset.zip")
+  unzip("Coursera-capestone-dataset.zip")
+}
+
+```
+### Listing Files in the Directory
+checking the files with the data in the dataset.
+```{r}
+list.files("final")
+```
+The data contaaints 4 files with corresponding languages German/deutsch `de_DE`, English `en_US`, Finnish `fi_FI` and Russian `ru_RU`. Only considering the English *`en_US`* data.
+```{r}
+list.files("final/en_US")
+```
+It contains Three files:
+
+1. blogs
+2. News
+3. Twitter
+
+```{r}
+#File destinations
+blogs.file<-"final/en_US/en_US.blogs.txt"
+news.file<-"final/en_US/en_US.news.txt"
+twitter.file<-"final/en_US/en_US.twitter.txt"
+
+#blogs
+blogs<-readLines(blogs.file,encoding="UTF-8",skipNul = TRUE)
+
+# News
+news<-readLines(news.file,encoding="UTF-8",skipNul = TRUE, warn=FALSE)
+
+# Twitter
+twitter<-readLines(twitter.file,encoding="UTF-8",skipNul = TRUE)
+```
+### Summary
+```{r}
+library(stringi)
+# File Size
+File.size<- paste0(round((file.info(c(blogs.file,news.file,twitter.file))$size/1024^2))," MB")
+
+# Number of lines
+Lines<-sapply(list(blogs,news,twitter), length)
+
+# Number of characters 
+Characters<-sapply(list(nchar(blogs),nchar(news),nchar(twitter)), sum)
+
+# Number of words
+Words<- sapply(list(blogs, news, twitter),stri_stats_latex)[4,]
+
+
+data.summary<-data.frame(File = c("blogs", "news", "twitter"),
+                         File.size,Lines,Characters,Words)
+```
+```{r}
+library(knitr)
+kable(data.summary)
+```
+
+## Data Sampeling 
+To perform exploratory analysis, we will use a sample from the data since  usng all the data will just increase the computational load.Therefore,Taking 1% lines form the data.
+```{r}
+set.seed(5463)
+
+# Sample size
+sample.size=0.05
+
+# Sample Data
+Sample.blogs<-sample(blogs,length(blogs)*sample.size,replace =F)
+Sample.news<-sample(news,length(news)*sample.size,replace =F)
+Sample.twitter<-sample(twitter,length(twitter)*sample.size,replace =F)
+
+#complete data file
+sample.Data<-c(Sample.blogs,Sample.news,Sample.twitter)
+
+# remove all non-English characters from the sampled data
+sample.Data <- iconv(sample.Data, "latin1", "ASCII", sub = "")
+
+# write the complete data file into a text file
+sample.con<-file("sample-data.txt",open='w')
+writeLines(sample.Data,sample.con)
+close(sample.con)
+```
+
+## Data Cleaning
+Before we clean the data, we will create a VCorpus to organize the text data by using r package 'quanteda'.
+```{r}
+suppressMessages(library(quanteda))
+sample.Data.corpus <- corpus(sample.Data)
+```
+To clean the the data we will employ following steps:
+
+1. Converting to low case.
+2. Removing URL address,Twitter handles and email addressee. 
+3. Removing unwanted spaces, numbers and punctuation.
+
+```{r}
+sample.Data.corpus.tokens<-tokens(sample.Data.corpus,
+                                  what="word",
+                      remove_numbers = TRUE,
+                      remove_punct = TRUE,
+                      remove_url =TRUE,
+                      remove_separators = TRUE,
+                      remove_symbols = TRUE,
+                      split_hyphens = FALSE)
+
+```
+removing common words like "the," "and," "is," etc, which are not necessary using `stopwords()`.
+```{r}
+sample.Data.corpus.tokens.no.stopwords<-tokens_remove(sample.Data.corpus.tokens,pattern=stopwords("en"))
+```
+
+*Profanity Filter*- removing profanity and other words that we do not want to predict.
+For performing profanity filter on data we will use the british swear words data provded by [www.freewebheaders.com](https://www.freewebheaders.com/british-swear-words-list-and-bad-words-free-download/).
+```{r}
+# download bad words file
+url.bad.words<-"https://www.freewebheaders.com/download/files/british-swear-words-list_text-file.zip"
+if(!file.exists("bad-words.zip")){
+  download.file(url.bad.words,destfile = "bad-words.zip")
+  unzip("bad-words.zip")
+}
+
+# Read bad words file
+bad.words<-readLines("british-swear-words-list_text-file.txt",warn=F)[-c(1:9)]
+
+```
+
+## Exloratory Data Analysis
+In this part, the aim is to understand the distribution and understanding the distribution and relationship between the words, tokens, and phrases in the text.
+
+Tasks to accomplish:
+
+1. Build basic `n-gram` model - using the exploratory analysis you performed, build a basic 
+n-gram model
+ for predicting the next word based on the previous 1, 2, or 3 words.
+
+2. Build a model to handle unseen `n-grams` - in some cases people will want to type a combination of words that does not appear in the corpora. Build a model to handle cases where a particular n-gram isn't observed.
+
+### Unigrams
+```{r}
+# Unigram
+Unigram<-tokens_ngrams(sample.Data.corpus.tokens.no.stopwords,n=1)
+```
+A `document-feature matrix` is crated for the `unigram` and alll words are converted to lower and profanity will be removed.
+```{r}
+text.unigram<-dfm(Unigram,tolower=TRUE,remove_padding = TRUE,
+             remove=bad.words,verbose=FALSE)
+```
+- Adding the frequency of the `unigrams` in the corpus. 
+```{r}
+# The most frequent occurring words in the unigrams
+Unigram.freq<-topfeatures(text.unigram,100)
+Unigram.freq.df<-data.frame(Unigram=names(Unigram.freq),freq=Unigram.freq)
+```
+Plotting a bar chart for word frequencies.
+```{r}
+library(ggplot2)
+# Word frequency vs word 10 most frequent words bar plot
+g<-ggplot(Unigram.freq.df[1:20,],aes(x = reorder(Unigram, -freq), y = freq))
+g<-g+geom_bar(stat = "Identity",fill = I("lightblue"))
+g<-g+geom_text(aes(label=Unigram.freq.df[1:20,]$freq),vjus=-0.2,size=3)
+g<-g+xlab("Words")+ylab("frequency")+ggtitle("10 Most Frequent Words")
+g<-g+theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.text.y = element_text(angle = 0, hjust = 1)) 
+g
+```
+
+- visualizing the words in `unigrams`.
+```{r}
+library(wordcloud2)
+wordcloud2(data=Unigram.freq.df,size=0.5,minRotation = -pi/6, maxRotation = -pi/6, minSize = 10,
+  rotateRatio = 1,shape = "circle",color='random-dark')
+```
+### Bigram
+```{r}
+text.bigram<-dfm(tokens_ngrams(sample.Data.corpus.tokens.no.stopwords,n=2,concatenator = " "),
+            tolower=TRUE,remove_padding = TRUE,
+             remove=bad.words,verbose=FALSE)
+# bigram word Freequencies
+bigram.freq<-topfeatures(text.bigram,100)
+bigram.freq.df<-data.frame(bigram=names(bigram.freq),freq=bigram.freq)
+```
+Plotting a bar chart for word frequencies.
+```{r}
+library(ggplot2)
+# Word frequency vs word 10 most frequent words bar plot
+g<-ggplot(bigram.freq.df[1:20,],aes(x = reorder(bigram, -freq), y = freq))
+g<-g+geom_bar(stat = "Identity",fill = I("lightblue"))
+g<-g+geom_text(aes(label=bigram.freq.df[1:20,]$freq),vjus=-0.2,size=3)
+g<-g+xlab("Words")+ylab("frequency")+ggtitle("10 Most Frequent Words")
+g<-g+theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(angle = 0, hjust = 1)) 
+g
+```
+
+- visualizing the words in `bigrams`.
+```{r}
+wordcloud2(data=bigram.freq.df,size=0.4,minRotation = -pi/6, maxRotation = -pi/6, minSize = 10,
+  rotateRatio = 1,shape = "circle", 
+              color='random-dark')
+```
+### Triigram
+```{r}
+text.trigram<-dfm(tokens_ngrams(sample.Data.corpus.tokens.no.stopwords,n=3,concatenator = " "),
+            tolower=TRUE,remove_padding = TRUE,
+             remove=bad.words,verbose=FALSE)
+# bigram word Freequencies
+trigram.freq<-topfeatures(text.trigram,100)
+trigram.freq.df<-data.frame(trigram=names(trigram.freq),freq=trigram.freq)
+```
+Plotting a bar chart for word frequencies.
+```{r}
+library(ggplot2)
+# Word frequency vs word 10 most frequent words bar plot
+g<-ggplot(trigram.freq.df[1:20,],aes(x = reorder(trigram, -freq), y = freq))
+g<-g+geom_bar(stat = "Identity",fill = I("lightblue"))
+g<-g+geom_text(aes(label=trigram.freq.df[1:20,]$freq),vjus=-0.2,size=3)
+g<-g+xlab("Words")+ylab("frequency")+ggtitle("10 Most Frequent Words")
+g<-g+theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.text.y = element_text(angle = 0, hjust = 1)) 
+g
+```
+
+- visualizing the words in `trigrams`.
+```{r}
+wordcloud2(data=trigram.freq.df,size=0.35,minRotation = -pi/6, maxRotation = -pi/6, minSize = 10,
+  rotateRatio = 1,shape = "circle",color='random-dark' )
+```
+### Findings
+Through exploring the data, we identified the top 20 most frequently used words, visualizing them in a word cloud. It's worth noting that the most frequent words were common ones like "the," "a," "I," etc. To focus on less common words, we had to exclude these highly common ones.
+
+## Next Plan:
+
+The primary plan is to leverage the initial data analysis provided here to advance the development of the prediction algorithm required for the Shiny application. Following this exploratory analysis, one approach is to predict the next word using n-gram analysis and selecting an appropriate model such as `backoff model`, all integrated into a Shiny app.
