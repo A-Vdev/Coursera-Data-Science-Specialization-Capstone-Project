@@ -1,0 +1,39 @@
+---
+title: "Word Prediction Application"
+author: "Abhijeet"
+date: "2023-12-07"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+## About the Project
+The Word Prediction App, a product of the [Data Science Specialization](https://www.coursera.org/specializations/jhu-data-science) Capstone Course by Johns Hopkins University, emerges from a collaboration with SwiftKey to tackle the inconvenience of mobile typing. SwiftKey's expertise in smart keyboard technology, featuring predictive text models, sets the foundation for this project.
+
+The capstone project recognizes the evolving landscape of data science and the significance of natural language processing (NLP) in addressing contemporary challenges, especially in the realm of mobile interactions. While providing resources for exploration, it encourages participants to leverage their existing knowledge to create impactful and user-friendly data products. Overall, the initiative emphasizes adaptability, creativity, and the application of learned skills to novel contexts in the dynamic field of data science.
+
+
+
+## About the application
+Introducing our [Word Prediction App](https://av-dev.shinyapps.io/Word-Predictor/), a product of the Data Science Specialization Capstone Course in collaboration with SwiftKey. Designed to ease the mobile typing experience, our app employs advanced predictive text models, offering real-time word suggestions. Through analysis of text corpora and predictive modeling, we present a user-friendly Shiny app that reflects the evolving landscape of data science, specifically in natural language processing. Join us in revolutionizing the mobile typing experience and witness the practical application of your acquired skills. It's not just an app; it's a glimpse into the future of data science in everyday interactions.
+
+## Application
+- below is an example of the interface.
+```{r}
+library(png)
+library(graphics)
+# Specify the path to your image file
+image_path <- "C:/Users/Star/Downloads/Screenshot.png"
+image <- readPNG(image_path)
+plot(1:2, type = 'n', axes = FALSE, xlab = '', ylab = '')
+rasterImage(image, 1, 1, 2, 2)
+```
+
+## Refrences 
+1. All the code files are available in my [github repository](https://github.com/A-Vdev/Shiny-Application-and-Reproducible-Pitch).
+
+2. The shiny Application: [Word Prediction App](https://av-dev.shinyapps.io/Word-Predictor/)
+
+3. [Data Science Specialization](https://www.coursera.org/specializations/jhu-data-science) Coursera.
+
